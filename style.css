@@ -1,0 +1,203 @@
+/* VARIABLES (Tailwind colors from Image 0) */
+:root {
+    --bg-app: #17161f;          
+    --bg-panel: #17161f;        
+    --bg-sidebar: #17161f;      
+    --accent: #6a120f;          
+    --accent-dark: #c8630b;     
+    --text-primary: #7d140e;   
+    --text-secondary: #810e0e;  
+    --border-color: #374151;    
+    --success: #10b981;        
+    --danger: #ef4444;          
+}
+
+/* =========================================
+   RESET Y BASE
+========================================= */
+* { box-sizing: border-box; outline: none; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+ul { list-style: none; padding: 0; margin: 0; }
+button { font-family: inherit; cursor: pointer; border: none; transition: 0.2s ease; }
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background-color: #555; }
+
+/* =========================================
+   LAYOUT PRINCIPAL
+========================================= */
+.app-container { display: flex; height: 100vh; }
+
+.sidebar {
+    width: 280px; background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex; flex-direction: column; flex-shrink: 0;
+}
+
+.sidebar-header { padding: 30px; border-bottom: 1px solid var(--border-color); }
+.sidebar-header h1 { margin: 0; font-size: 20px; font-weight: 800; color: var(--accent); }
+.sidebar-header p { margin: 3px 0 0; font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.sidebar-nav { flex: 1; padding: 20px 15px; overflow-y: auto; }
+.nav-section-title { color: var(--text-secondary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 15px; margin-bottom: 10px; }
+
+.nav-btn {
+    width: 100%; display: flex; align-items: center; gap: 12px;
+    padding: 12px 15px; background: transparent; color: var(--text-primary);
+    border-radius: 8px; font-size: 14px; font-weight: 500; text-align: left;
+}
+.nav-btn .icon { font-size: 16px; opacity: 0.7; width: 20px; text-align: center; }
+.nav-btn:hover { background-color: rgba(255, 255, 255, 0.03); }
+.nav-btn.active { background-color: var(--accent); color: #111; font-weight: 700; }
+.nav-btn.active .icon { opacity: 1; color: #111; }
+
+.sidebar-footer { padding: 20px 15px; border-top: 1px solid var(--border-color); }
+.logout-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px; background-color: #000; color: var(--danger);
+    border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.logout-btn:hover { background-color: var(--danger); color: white; }
+
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.content-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 25px 40px; border-bottom: 1px solid var(--border-color); background-color: var(--bg-app);
+}
+.welcome-block h2 { margin: 0; font-size: 24px; font-weight: 800; color: var(--text-primary); }
+.welcome-block p { margin: 5px 0 0; font-size: 14px; color: var(--text-secondary); }
+
+.campaign-top-bar {
+    display: flex; align-items: center; gap: 10px; background-color: var(--bg-panel);
+    padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border-color); font-size: 13px;
+}
+.campaign-top-bar .label { color: var(--text-secondary); }
+.campaign-top-bar .level-tag { color: var(--accent); font-weight: 700; }
+.campaign-top-bar .divider { width: 1px; height: 16px; background-color: var(--border-color); }
+.minimal-input { background: transparent; border: none; color: var(--text-primary); font-weight: 600; font-size: 13px; width: 150px; padding: 0; }
+
+.scroll-area { flex: 1; overflow-y: auto; padding: 40px; }
+.container-centered { max-width: 800px; margin: 0 auto; }
+
+/* =========================================
+   PANELES Y PESTAÑAS
+========================================= */
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.panel {
+    background-color: var(--bg-panel); border-radius: 12px;
+    border: 1px solid var(--border-color); padding: 25px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+}
+.panel-main-title { margin: 0 0 25px; font-size: 20px; font-weight: 800; color: var(--accent); text-align: center; }
+
+/* =========================================
+   FORMULARIOS GENÉRICOS
+========================================= */
+.form-grid { display: grid; gap: 12px; margin-bottom: 20px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+input, select, textarea {
+    width: 100%; padding: 12px 15px; background-color: var(--bg-app);
+    border: 1px solid var(--border-color); color: var(--text-primary);
+    border-radius: 8px; font-size: 13px; font-family: inherit; transition: 0.1s;
+}
+textarea { resize: vertical; min-height: 80px; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+.action-btn {
+    padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.02em;
+}
+.primary-btn { background-color: var(--accent); color: #111; }
+.primary-btn:hover { background-color: #fff; transform: translateY(-2px); }
+.btn-full { width: 100%; }
+
+/* =========================================
+   SISTEMA D&D (Estadísticas y Bestiario)
+========================================= */
+/* Grilla de 6 stats (FUE, DES, CON, INT, SAB, CAR) */
+.dnd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 15px 0;
+}
+.dnd-stat-box { text-align: center; }
+.dnd-stat-box small { display: block; color: var(--text-secondary); font-size: 11px; margin-bottom: 5px; font-weight: bold; }
+.dnd-stat-box input { text-align: center; padding: 10px 5px; font-weight: bold; font-size: 14px; }
+
+/* Tarjetas del Bestiario */
+.bestiary-item {
+    border-left: 4px solid var(--danger) !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+.bestiary-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;}
+.bestiary-header strong { font-size: 15px; }
+.bestiary-header .cr-type { color: var(--text-secondary); font-size: 12px; font-weight: normal; }
+
+.bestiary-stats-row {
+    font-family: monospace; background: rgba(0,0,0,0.3); padding: 8px 12px; 
+    border-radius: 6px; font-size: 12px; color: var(--accent);
+    display: flex; justify-content: space-between; margin-bottom: 10px;
+}
+.bestiary-combat-info { font-size: 13px; margin-bottom: 10px; }
+.bestiary-combat-info .hp { color: var(--success); font-weight: bold; margin-right: 15px;}
+.bestiary-actions { font-size: 12px; color: var(--text-secondary); padding-top: 10px; border-top: 1px solid var(--border-color); line-height: 1.5;}
+
+/* =========================================
+   GENERADOR DE MAPAS (IA)
+========================================= */
+.ai-generator-box {
+    background: rgba(245, 158, 11, 0.05); border: 1px solid var(--accent);
+    padding: 25px; border-radius: 12px; margin-bottom: 25px;
+}
+.ai-generator-box h3 { color: var(--accent); margin: 0 0 5px 0; font-size: 18px; }
+.ai-generator-box p { font-size: 12px; color: var(--text-secondary); margin-bottom: 15px; }
+.map-output {
+    margin-top: 20px; text-align: center; min-height: 120px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    border: 2px dashed var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.2); padding: 10px;
+}
+
+/* =========================================
+   LISTAS Y COMBATE (Estilos previos)
+========================================= */
+.list-title { margin: 25px 0 10px; font-size: 14px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+.items-list-fancy { display: grid; gap: 10px; }
+.items-list-fancy li {
+    background-color: var(--bg-app); border: 1px solid var(--border-color);
+    padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 15px;
+}
+.items-list-fancy button {
+    padding: 5px 10px; font-size: 10px; text-transform: uppercase;
+    background-color: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 4px; font-weight: 700;
+}
+.items-list-fancy button:hover { background-color: var(--danger); color: white; }
+
+.combat-controls-fancy { display: flex; justify-content: space-between; gap: 10px; margin: 20px 0; }
+.combat-item { display: grid; gap: 10px; padding: 15px; background-color: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; }
+.combat-item.active-turn { border-color: var(--accent); background-color: rgba(245, 158, 11, 0.05); }
+.hp-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--border-color); padding-top: 10px; }
+.hp-display { font-size: 15px; font-weight: 800; color: var(--success); min-width: 60px; }
+
+/* =========================================
+   LOGIN SCREEN
+========================================= */
+.login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: radial-gradient(circle at center, var(--bg-panel) 0%, var(--bg-app) 100%); }
+.login-card { background-color: var(--bg-panel); padding: 50px 40px; border-radius: 16px; border: 1px solid var(--border-color); width: 100%; max-width: 400px; text-align: center; }
