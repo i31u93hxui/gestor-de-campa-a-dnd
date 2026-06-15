@@ -133,7 +133,7 @@ function setupEventListeners() {
     });
 }
 
-// ========== LÓGICA DASHBOARD (Resumen po) ==========
+// ========== LÓGICA DASHBOARD (Resumen) ==========
 function updateDashboardSummary() {
     // Nombre e info general
     const campNameInput = document.getElementById('campaignName');
@@ -174,18 +174,6 @@ function updateDashboardSummary() {
 }
 
 // ========== PJS ==========
-//function addPlayer(e) {
-    //e.preventDefault();
-    //const data = {
-       //player: document.getElementById('playerName').value, 
-        //character: document.getElementById('characterName').value,
-        //class: document.getElementById('characterClass').value, 
-        //race: document.getElementById('playerRace').value,
-        //level: document.getElementById('playerLevel').value, 
-        //hp: document.getElementById('playerHP').value
-    //};
-    //campaignData.players.push(data);
-    //e.target.reset(); saveCampaign(); renderPlayersList();
 function addPlayer(e) {
     e.preventDefault();
     const data = {
@@ -195,8 +183,8 @@ function addPlayer(e) {
         race: document.getElementById('playerRace').value,
         level: document.getElementById('playerLevel').value, 
         hp: document.getElementById('playerHP').value,
-        ac: document.getElementById('playerAC').value, // <-- Clase de Armadura
-        str: document.getElementById('pjSTR').value,   // <-- Stats
+        ac: document.getElementById('playerAC').value, 
+        str: document.getElementById('pjSTR').value,   
         dex: document.getElementById('pjDEX').value,
         con: document.getElementById('pjCON').value,
         int: document.getElementById('pjINT').value,
@@ -207,19 +195,6 @@ function addPlayer(e) {
     e.target.reset(); saveCampaign(); renderPlayersList();
 }
 
-//function renderPlayersList() {
-    //const list = document.getElementById('playersList');
-    //if(!list) return;
-    //list.innerHTML = campaignData.players.map((p, i) => 
-      //  `<li>
-        //    <div>
-          //      <strong>${p.character}</strong> <small>(${p.player})</small><br>
-            //    <small>${p.race} ${p.class} - Nivel ${p.level} | HP: ${p.hp}</small>
-            //<///div>
-            //<button onclick="handleDeleteItem('players', ${i})">X</button>
-        //</li>`
-    //).join('');
-// Nueva versión con AC y stats}
 function renderPlayersList() {
     const list = document.getElementById('playersList');
     if(!list) return;
@@ -551,7 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const user = document.getElementById('usernameInput').value;
-            
+    
+            const pass = document.getElementById('passwordInput').value;
+
             // Guardar sesión en LocalStorage
             localStorage.setItem('qm_logged_in', 'true');
             localStorage.setItem('qm_username', user);
