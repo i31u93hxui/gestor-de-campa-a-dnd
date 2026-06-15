@@ -1,3 +1,18 @@
+// ========== SISTEMA DE SEGURIDAD (ANTI-XSS) ==========
+// Función vital para limpiar entradas de texto y evitar inyección de código malicioso
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
+
 // ========== ESTADO GLOBAL ==========
 let campaignData = {
     name: '',
@@ -8,121 +23,168 @@ let campaignData = {
     npcs: [],
     locations: [],
     treasure: [],
-    sessions: []
+    sessions: [],
+    bestiary: [],
+    combatEnvironment: null
 };
 
 let diceHistory = [];
 let currentTurnIndex = -1;
 let currentRound = 1;
+let currentUserRole = 'DM'; // 'DM' o 'PLAYER'
 
-// Esperar a que el HTML cargue completamente
+// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("🟢 Iniciando Gestor de D&D");
-    loadCampaign();
-    setupSidebarNavigation(); // NUEVA FUNCIÓN DE NAV
+    checkLoginState();
     setupEventListeners();
-    renderAll();
-    console.log("✅ Todo cargado.");
 });
 
-// ========== NAVEGACIÓN (Sidebar) ==========
-// Función auxiliar para llamar desde el HTML (ej: onclick de quick cards)
-function switchTab(tabId) {
-    // Buscar el botón correspondiente en el sidebar y hacerle clic
-    const sidebarBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-    if(sidebarBtn) {
-        sidebarBtn.click();
+// ========== SISTEMA DE LOGIN Y ROLES ==========
+function checkLoginState() {
+    const isLoggedIn = localStorage.getItem('qm_logged_in');
+    const loginScreen = document.getElementById('loginScreen');
+    const appScreen = document.getElementById('appScreen');
+    
+    if(isLoggedIn === 'true') {
+        loginScreen.style.display = 'none';
+        appScreen.style.display = 'flex'; 
+        
+        const savedUser = escapeHTML(localStorage.getItem('qm_username') || 'Usuario');
+        currentUserRole = localStorage.getItem('qm_role') || 'DM'; // Por defecto DM por ahora
+        
+        const welcomeBlock = document.querySelector('.welcome-block h2');
+        if(welcomeBlock) welcomeBlock.textContent = `¡Bienvenido, ${savedUser}!`;
+        
+        applyRoleRestrictions();
+        loadCampaign();
+        renderAll();
+    } else {
+        loginScreen.style.display = 'flex';
+        appScreen.style.display = 'none';
     }
 }
 
-function setupSidebarNavigation() {
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const contents = document.querySelectorAll('.tab-content');
-
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Quitar clase activa de todos los botones y secciones
-            navButtons.forEach(b => b.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-            
-            // Añadir clase activa al botón presionado
-            btn.classList.add('active');
-            
-            // Mostrar el contenido correspondiente
-            const targetId = btn.dataset.tab;
-            const targetContent = document.getElementById(targetId);
-            if(targetContent) {
-                targetContent.classList.add('active');
-            } else {
-                console.error(`❌ No se encontró la sección: ${targetId}`);
-            }
-        });
+function applyRoleRestrictions() {
+    const dmOnlyElements = document.querySelectorAll('.dm-only-element');
+    dmOnlyElements.forEach(el => {
+        el.style.display = currentUserRole === 'PLAYER' ? 'none' : '';
     });
+
+    const roleBadge = document.getElementById('roleBadgeDisplay');
+    if(roleBadge) {
+        roleBadge.textContent = currentUserRole === 'DM' ? '👑 DM' : '⚔️ Jugador';
+        roleBadge.style.color = currentUserRole === 'DM' ? 'var(--accent)' : '#3b82f6';
+    }
 }
 
 // ========== CARGA Y GUARDADO ==========
 function loadCampaign() {
     try {
-        const saved = localStorage.getItem('dndCampaignMaster_v2'); // Nueva versión para caché limpia
+        const saved = localStorage.getItem('dndCampaignMaster_v3');
         if (saved) {
             const parsed = JSON.parse(saved);
-            Object.assign(campaignData, parsed); // Manera más limpia de mezclar datos
-            if(!campaignData.date) campaignData.date = new Date().toISOString().split('T')[0];
-            console.log("💾 Datos cargados.");
+            Object.assign(campaignData, parsed);
         }
+        // Asegurar que los arrays existan si no estaban en el guardado anterior
+        ['players','quests','combatants','npcs','locations','treasure','sessions','bestiary'].forEach(key => {
+            if(!campaignData[key]) campaignData[key] = [];
+        });
     } catch (error) {
-        console.error("❌ Error LocalStorage.", error);
+        console.error("❌ Error cargando caché local.", error);
     }
 }
 
 function saveCampaign() {
-    localStorage.setItem('dndCampaignMaster_v2', JSON.stringify(campaignData));
-    updateDashboardSummary(); // Dashboard Summary en lugar del viejo updateDashboard
+    localStorage.setItem('dndCampaignMaster_v3', JSON.stringify(campaignData));
+    updateDashboardSummary();
 }
 
-// Centraliza todos los renderizados
 function renderAll() {
     updateDashboardSummary(); 
     renderPlayersList(); 
     renderQuestsList(); 
     renderCombatManager();
+    renderEnvironment();
     renderNPCsList(); 
     renderLocationsList(); 
     renderTreasureList(); 
     renderSessionsHistory();
+    renderBestiary();
 }
 
-// ========== EVENT LISTENERS ==========
+// ========== NAVEGACIÓN Y EVENTOS ==========
+function switchTab(tabId) {
+    const sidebarBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    if(sidebarBtn) sidebarBtn.click();
+}
+
 function setupEventListeners() {
-    // Inputs generales de cabecera
+    // Login
+    const loginForm = document.getElementById('loginForm');
+    if(loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('usernameInput').value;
+            // Sanitizamos al guardar
+            localStorage.setItem('qm_logged_in', 'true');
+            localStorage.setItem('qm_username', escapeHTML(user));
+            // Simulamos que por contraseña entra como DM
+            localStorage.setItem('qm_role', document.getElementById('passwordInput').value ? 'DM' : 'PLAYER');
+            
+            document.getElementById('passwordInput').value = ''; // Seguridad básica
+            checkLoginState();
+        });
+    }
+
+    // Logout
+    const logoutBtn = document.querySelector('.logout-btn');
+    if(logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if(confirm('¿Seguro que quieres cerrar sesión?')) {
+                localStorage.removeItem('qm_logged_in');
+                checkLoginState();
+            }
+        });
+    }
+
+    // Tabs
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            navButtons.forEach(b => b.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const targetContent = document.getElementById(btn.dataset.tab);
+            if(targetContent) targetContent.classList.add('active');
+        });
+    });
+
+    // Inputs principales
     const campName = document.getElementById('campaignName');
     if(campName) campName.addEventListener('input', (e) => { campaignData.name = e.target.value; saveCampaign(); });
-    
-    const campDate = document.getElementById('campaignDate'); // Calendario en Dashboard
-    if(campDate) campDate.addEventListener('change', (e) => { campaignData.date = e.target.value; saveCampaign(); });
-    
+
     // Formularios
     const forms = {
-        'playerForm': addPlayer, 'questForm': addQuest, 'combatForm': addCombatant,
+        'playerForm': addPlayer, 'questForm': addQuest, 'combatForm': addManualCombatant,
         'npcForm': addNPC, 'locationForm': addLocation, 'sessionForm': addSession,
-        'treasureForm': addTreasure
+        'treasureForm': addTreasure, 'monsterForm': addMonster
     };
-
     for (let id in forms) {
         const form = document.getElementById(id);
         if (form) form.addEventListener('submit', forms[id]);
     }
-    
-    // Controles de Combate
+
+    // Botones de utilidad
     document.getElementById('nextTurnBtn')?.addEventListener('click', handleNextTurn);
     document.getElementById('clearCombatBtn')?.addEventListener('click', handleClearCombat);
-    
-    // Botón Dashboard -> Historial
-    document.getElementById('newSessionBtn')?.addEventListener('click', () => switchTab('history'));
-    
-    // Botón Loot
     document.getElementById('generateLootBtn')?.addEventListener('click', handleGenerateLootPo);
+    document.getElementById('loadDefaultMonstersBtn')?.addEventListener('click', loadDefaultMonsters);
     
+    // IA Mockups
+    document.getElementById('generateMapBtn')?.addEventListener('click', handleMapGeneration);
+    document.getElementById('generateConsequencesBtn')?.addEventListener('click', handleConsequences);
+
     // Dados
     document.getElementById('rollBtn')?.addEventListener('click', handleManualDiceRoll);
     document.querySelectorAll('[data-quick]').forEach(btn => {
@@ -133,65 +195,47 @@ function setupEventListeners() {
     });
 }
 
-// ========== LÓGICA DASHBOARD (Resumen) ==========
+// ========== DASHBOARD (Auto-Nivel) ==========
 function updateDashboardSummary() {
-    // Nombre e info general
     const campNameInput = document.getElementById('campaignName');
     if(campNameInput) campNameInput.value = campaignData.name || '';
     
-    const campDateInput = document.getElementById('campaignDate');
-    if(campDateInput) campDateInput.value = campaignData.date;
+    // Lógica auto-level
+    const calculatedLevel = Math.min(20, 1 + campaignData.sessions.length);
+    const levelDisplay = document.getElementById('campaignLevelDisplay');
+    if (levelDisplay) levelDisplay.textContent = `Nivel ${calculatedLevel}`;
     
-    // Contadores
     const sets = {
-        'sessionCount': campaignData.sessions.length,
-        'playerCount': campaignData.players.length,
-        'questCount': campaignData.quests.length,
-        'npcCount': campaignData.npcs.length
+        'sessionCount': campaignData.sessions.length, 'playerCount': campaignData.players.length,
+        'questCount': campaignData.quests.length, 'npcCount': campaignData.npcs.length
     };
     for (let id in sets) {
-        const el = document.getElementById(id);
-        if(el) el.textContent = sets[id];
+        if(document.getElementById(id)) document.getElementById(id).textContent = sets[id];
     }
 
-    // Render Misiones Críticas (upcoming sessions en foto)
     const listEl = document.getElementById('upcomingQuests');
     if(listEl) {
-        // Filtrar misiones de importancia alta o media y activas
-        const criticalQuests = campaignData.quests
-            .filter(q => q.status === 'activa' && (q.importance === 'alta' || q.importance === 'media'));
-            
+        const criticalQuests = campaignData.quests.filter(q => q.status === 'activa' && (q.importance === 'alta' || q.importance === 'media'));
         listEl.innerHTML = criticalQuests.slice(0, 3).map(q => 
-            `<div class="sess-item">
-                <span class="card-icon">📜</span>
-                <div class="sess-info">
-                    <h4>${q.title}</h4>
-                    <p style="color:${q.importance === 'alta' ? 'var(--danger)' : 'var(--accent)'}">${q.importance.toUpperCase()} | Recompensa: ${q.reward || 0}</p>
-                </div>
+            `<div class="sess-item" style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 8px;">
+                <strong>${escapeHTML(q.title)}</strong><br>
+                <span style="font-size: 11px; color: ${q.importance === 'alta' ? 'var(--danger)' : 'var(--accent)'}">${escapeHTML(q.importance.toUpperCase())}</span>
             </div>`
-        ).join('') || `<p style="color: var(--text-secondary); font-size:12px; padding:10px;">No hay misiones críticas activas.</p>`;
+        ).join('') || `<p style="color: var(--text-secondary); font-size:12px;">Sin misiones críticas.</p>`;
     }
 }
 
-// ========== PJS ==========
+// ========== PJS & BESTIARIO (Con auto-modificador) ==========
 function addPlayer(e) {
     e.preventDefault();
-    const data = {
-        player: document.getElementById('playerName').value, 
-        character: document.getElementById('characterName').value,
-        class: document.getElementById('characterClass').value, 
-        race: document.getElementById('playerRace').value,
-        level: document.getElementById('playerLevel').value, 
-        hp: document.getElementById('playerHP').value,
-        ac: document.getElementById('playerAC').value, 
-        str: document.getElementById('pjSTR').value,   
-        dex: document.getElementById('pjDEX').value,
-        con: document.getElementById('pjCON').value,
-        int: document.getElementById('pjINT').value,
-        wis: document.getElementById('pjWIS').value,
-        cha: document.getElementById('pjCHA').value
-    };
-    campaignData.players.push(data);
+    campaignData.players.push({
+        player: document.getElementById('playerName').value, character: document.getElementById('characterName').value,
+        class: document.getElementById('characterClass').value, race: document.getElementById('playerRace').value,
+        str: document.getElementById('pjSTR').value, dex: document.getElementById('pjDEX').value, con: document.getElementById('pjCON').value,
+        int: document.getElementById('pjINT').value, wis: document.getElementById('pjWIS').value, cha: document.getElementById('pjCHA').value,
+        hp: document.getElementById('playerHP').value, ac: document.getElementById('playerAC').value,
+        level: Math.min(20, 1 + campaignData.sessions.length) // Auto-level
+    });
     e.target.reset(); saveCampaign(); renderPlayersList();
 }
 
@@ -202,60 +246,95 @@ function renderPlayersList() {
         `<li style="flex-direction: column; align-items: stretch; border-left: 4px solid var(--accent);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                 <div>
-                    <strong style="font-size: 16px;">${p.character}</strong> <small style="color: var(--text-secondary);">(${p.player})</small><br>
-                    <small style="color: var(--accent); font-weight: 600;">${p.race} ${p.class} - Nivel ${p.level}</small>
+                    <strong style="font-size: 16px;">${escapeHTML(p.character)}</strong> <small style="color: var(--text-secondary);">(${escapeHTML(p.player)})</small><br>
+                    <small style="color: var(--accent); font-weight: 600;">${escapeHTML(p.race)} ${escapeHTML(p.class)} - Nivel ${p.level}</small>
                 </div>
-                <button onclick="handleDeleteItem('players', ${i})">X</button>
+                <div>
+                    <button class="action-btn primary-btn" style="padding:4px 8px; font-size:10px; margin-right:5px; color: black;" onclick="addEntityToCombat('players', ${i})">⚔️ A Combate</button>
+                    <button onclick="handleDeleteItem('players', ${i})">X</button>
+                </div>
             </div>
-            
             <div style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; font-size: 12px; color: var(--text-primary); display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span>FUE:${p.str || 10}</span><span>DES:${p.dex || 10}</span><span>CON:${p.con || 10}</span><span>INT:${p.int || 10}</span><span>SAB:${p.wis || 10}</span><span>CAR:${p.cha || 10}</span>
+                <span>FUE:${escapeHTML(p.str||10)}</span><span>DES:${escapeHTML(p.dex||10)}</span><span>CON:${escapeHTML(p.con||10)}</span><span>INT:${escapeHTML(p.int||10)}</span><span>SAB:${escapeHTML(p.wis||10)}</span><span>CAR:${escapeHTML(p.cha||10)}</span>
             </div>
-            
-            <div style="font-size: 14px;">
-                <span style="color: var(--success); font-weight: 800; margin-right: 15px;">HP: ${p.hp || 0}</span> 
-                <span style="font-weight: bold;">CA: ${p.ac || 10}</span>
-            </div>
+            <div style="font-size: 14px;"><span style="color: var(--success); font-weight: 800; margin-right: 15px;">HP: ${escapeHTML(p.hp||0)}</span> <span style="font-weight: bold;">CA: ${escapeHTML(p.ac||10)}</span></div>
         </li>`
     ).join('');
 }
 
-// ========== MISIONES ==========
-function addQuest(e) {
+function addMonster(e) {
     e.preventDefault();
-    campaignData.quests.push({
-        title: document.getElementById('questTitle').value, 
-        desc: document.getElementById('questDescription').value,
-        importance: document.getElementById('questImportance').value, 
-        status: document.getElementById('questStatus').value,
-        reward: document.getElementById('questReward').value
+    campaignData.bestiary.push({
+        name: document.getElementById('monName').value, type: document.getElementById('monType').value, cr: document.getElementById('monCR').value,
+        str: document.getElementById('monSTR').value, dex: document.getElementById('monDEX').value, con: document.getElementById('monCON').value,
+        int: document.getElementById('monINT').value, wis: document.getElementById('monWIS').value, cha: document.getElementById('monCHA').value,
+        hp: document.getElementById('monHP').value, ac: document.getElementById('monAC').value, actions: document.getElementById('monActions').value
     });
-    e.target.reset(); saveCampaign(); renderQuestsList();
+    e.target.reset(); saveCampaign(); renderBestiary();
 }
 
-function renderQuestsList() {
-    const list = document.getElementById('questsList');
-    if(!list) return;
-    const colors = { completada: 'var(--success)', activa: '#3b82f6', pendiente: 'var(--accent)' };
-    list.innerHTML = campaignData.quests.map((q, i) => 
-        `<li style="border-left-color: ${colors[q.status] || 'var(--border-color)'}">
-            <div>
-                <strong>${q.title}</strong> <small>(${q.status})</small><br>
-                <small>${q.importance.toUpperCase()} - ${q.desc}</small>
+function renderBestiary() {
+    const list = document.getElementById('monstersList');
+    if(!list || !campaignData.bestiary) return;
+    list.innerHTML = campaignData.bestiary.map((m, i) => 
+        `<li class="bestiary-item" style="border-left: 4px solid var(--danger);">
+            <div class="bestiary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <strong>${escapeHTML(m.name)} <span class="cr-type" style="color: var(--text-secondary); font-size: 11px;">(CR ${escapeHTML(m.cr)} | ${escapeHTML(m.type)})</span></strong>
+                <div>
+                    <button class="action-btn primary-btn" style="padding:4px 8px; font-size:10px; margin-right:5px; color: black;" onclick="addEntityToCombat('bestiary', ${i})">⚔️ A Combate</button>
+                    <button onclick="handleDeleteItem('bestiary', ${i})">X</button>
+                </div>
             </div>
-            <button onclick="handleDeleteItem('quests', ${i})">X</button>
+            <div class="bestiary-stats-row" style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; font-size: 12px; color: var(--accent); display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span>FUE:${escapeHTML(m.str||10)}</span><span>DES:${escapeHTML(m.dex||10)}</span><span>CON:${escapeHTML(m.con||10)}</span><span>INT:${escapeHTML(m.int||10)}</span><span>SAB:${escapeHTML(m.wis||10)}</span><span>CAR:${escapeHTML(m.cha||10)}</span>
+            </div>
+            <div class="bestiary-combat-info" style="font-size: 13px; margin-bottom: 10px;"><span class="hp" style="color: var(--success); font-weight: bold; margin-right: 15px;">HP: ${escapeHTML(m.hp||0)}</span> <span>CA: ${escapeHTML(m.ac||10)}</span></div>
+            <div class="bestiary-actions" style="font-size: 12px; color: var(--text-secondary); padding-top: 10px; border-top: 1px solid var(--border-color); line-height: 1.5;">${escapeHTML(m.actions)}</div>
         </li>`
     ).join('');
 }
 
-// ========== COMBATE ==========
-function addCombatant(e) {
+function loadDefaultMonsters() {
+    const basics = [
+        { name: "Goblin", type: "Humanoide", cr: "1/4", str: 8, dex: 14, con: 10, int: 10, wis: 8, cha: 8, hp: 7, ac: 15, actions: "Cimitarra: +4, 1d6+2" },
+        { name: "Orco", type: "Humanoide", cr: "1/2", str: 16, dex: 12, con: 16, int: 7, wis: 11, cha: 10, hp: 15, ac: 13, actions: "Gran hacha: +5, 1d12+3" }
+    ];
+    campaignData.bestiary = [...campaignData.bestiary, ...basics];
+    saveCampaign(); renderBestiary(); alert("Básicos cargados.");
+}
+
+// ========== COMBATE Y ENTORNO ==========
+function addEntityToCombat(sourceArray, index) {
+    const entity = campaignData[sourceArray][index];
+    const isPlayer = sourceArray === 'players';
+    const name = isPlayer ? entity.character : entity.name;
+    const dexMod = Math.floor((Number(entity.dex || 10) - 10) / 2);
+    const autoRoll = Math.floor(Math.random() * 20) + 1 + dexMod;
+    
+    let initInput = prompt(`Iniciativa para ${name} (Mod DES: ${dexMod >= 0 ? '+'+dexMod : dexMod}):\nDejar en blanco/Enter para auto-roll.`, autoRoll);
+
+    if (initInput !== null && initInput.trim() !== "") {
+        let finalName = name;
+        if(!isPlayer) {
+            const count = campaignData.combatants.filter(c => c.name.startsWith(name)).length;
+            if(count > 0) finalName = `${name} #${count + 1}`;
+        }
+
+        campaignData.combatants.push({
+            name: finalName, init: Number(initInput), hp: Number(entity.hp || 0), ac: Number(entity.ac || 10),
+            type: isPlayer ? "Jugador" : "Enemigo"
+        });
+        
+        campaignData.combatants.sort((a, b) => b.init - a.init);
+        saveCampaign(); renderCombatManager();
+    }
+}
+
+function addManualCombatant(e) {
     e.preventDefault();
     campaignData.combatants.push({
-        name: document.getElementById('charName').value, 
-        init: Number(document.getElementById('charInit').value),
-        hp: Number(document.getElementById('charHP').value), 
-        ac: document.getElementById('charAC').value,
+        name: document.getElementById('charName').value, init: Number(document.getElementById('charInit').value),
+        hp: Number(document.getElementById('charHP').value), ac: document.getElementById('charAC').value,
         type: document.getElementById('combatantType').value
     });
     campaignData.combatants.sort((a, b) => b.init - a.init);
@@ -268,23 +347,22 @@ function renderCombatManager() {
     list.innerHTML = campaignData.combatants.map((c, i) => 
         `<li class="combat-item ${i === currentTurnIndex ? 'active-turn' : ''}">
             <div class="item-header">
-                <div><strong>${c.name}</strong> <span class="status-tag">(${c.type})</span></div>
-                <div style="font-size:12px">Init: <strong>${c.init}</strong> | AC: <strong>${c.ac}</strong></div>
+                <div><strong>${escapeHTML(c.name)}</strong> <span class="status-tag">(${escapeHTML(c.type)})</span></div>
+                <div style="font-size:12px">Init: <strong>${escapeHTML(c.init)}</strong> | AC: <strong>${escapeHTML(c.ac)}</strong></div>
             </div>
             <div class="hp-controls">
-                <span class="hp-display">HP: ${c.hp}</span>
+                <span class="hp-display">HP: ${escapeHTML(c.hp)}</span>
                 <input type="number" id="dmg-${i}" placeholder="Cant.">
-                <button class="primary-btn" style="background:#e74c3c; color:white;" onclick="modifyHP(${i}, -1)">- Daño</button>
-                <button class="primary-btn" style="background:var(--success); color:white;" onclick="modifyHP(${i}, 1)">+ Cura</button>
+                <button class="primary-btn" style="background:#e74c3c; color:white; padding:8px 10px; border-radius:4px;" onclick="modifyHP(${i}, -1)">- Daño</button>
+                <button class="primary-btn" style="background:var(--success); color:white; padding:8px 10px; border-radius:4px;" onclick="modifyHP(${i}, 1)">+ Cura</button>
                 <button class="clear-btn" style="padding: 8px;" onclick="handleDeleteItem('combatants', ${i})">X</button>
             </div>
         </li>`
     ).join('');
     
-    // Actualizar display de turno actual
     const turnDisplay = document.getElementById('currentTurn');
     if (turnDisplay) {
-        if(campaignData.combatants.length > 0 && currentTurnIndex >= 0) {
+        if(campaignData.combatants.length > 0 && currentTurnIndex >= 0 && currentTurnIndex < campaignData.combatants.length) {
             turnDisplay.textContent = campaignData.combatants[currentTurnIndex].name;
             turnDisplay.style.color = "var(--accent)";
         } else {
@@ -296,23 +374,19 @@ function renderCombatManager() {
 
 function modifyHP(index, mult) {
     const inputEl = document.getElementById(`dmg-${index}`);
+    if(!inputEl) return;
     const val = Number(inputEl.value);
     if(val) {
         campaignData.combatants[index].hp += (val * mult);
         if(campaignData.combatants[index].hp < 0) campaignData.combatants[index].hp = 0;
-        inputEl.value = ''; 
-        saveCampaign(); renderCombatManager();
+        inputEl.value = ''; saveCampaign(); renderCombatManager();
     }
 }
 
 function handleNextTurn() {
     if(campaignData.combatants.length === 0) return;
     currentTurnIndex++;
-    if(currentTurnIndex >= campaignData.combatants.length) {
-        currentTurnIndex = 0; 
-        currentRound++; 
-        document.getElementById('currentRound').textContent = currentRound;
-    }
+    if(currentTurnIndex >= campaignData.combatants.length) { currentTurnIndex = 0; currentRound++; document.getElementById('currentRound').textContent = currentRound; }
     renderCombatManager();
 }
 
@@ -324,15 +398,57 @@ function handleClearCombat() {
     }
 }
 
-// ========== NPCs ==========
+function setEnvironment(e) {
+    e.preventDefault();
+    const name = document.getElementById('envName').value;
+    const effect = document.getElementById('envEffect').value;
+    if(!name) return alert("Ponle nombre al entorno.");
+    campaignData.combatEnvironment = { name, effect };
+    saveCampaign(); renderEnvironment();
+    document.getElementById('envName').value = ''; document.getElementById('envEffect').value = '';
+}
+
+function clearEnvironment() { campaignData.combatEnvironment = null; saveCampaign(); renderEnvironment(); }
+
+function renderEnvironment() {
+    const display = document.getElementById('currentEnvironmentDisplay');
+    if(!display) return;
+    if(campaignData.combatEnvironment && campaignData.combatEnvironment.name) {
+        display.style.display = 'block';
+        document.getElementById('displayEnvName').textContent = "📍 " + escapeHTML(campaignData.combatEnvironment.name);
+        document.getElementById('displayEnvEffect').innerHTML = "⚠️ <strong>Penalización:</strong> " + escapeHTML(campaignData.combatEnvironment.effect);
+    } else {
+        display.style.display = 'none';
+    }
+}
+
+// ========== OTRAS FUNCIONES (Misiones, Lore, Historial, Loot) ==========
+function addQuest(e) {
+    e.preventDefault();
+    campaignData.quests.push({
+        title: document.getElementById('questTitle').value, desc: document.getElementById('questDescription').value,
+        importance: document.getElementById('questImportance').value, status: document.getElementById('questStatus').value
+    });
+    e.target.reset(); saveCampaign(); renderQuestsList();
+}
+
+function renderQuestsList() {
+    const list = document.getElementById('questsList');
+    if(!list) return;
+    const colors = { completada: 'var(--success)', activa: '#3b82f6', pendiente: 'var(--accent)' };
+    list.innerHTML = campaignData.quests.map((q, i) => 
+        `<li style="border-left-color: ${colors[q.status] || 'var(--border-color)'}">
+            <div><strong>${escapeHTML(q.title)}</strong> <small>(${escapeHTML(q.status)})</small><br><small>${escapeHTML(q.desc)}</small></div>
+            <button onclick="handleDeleteItem('quests', ${i})">X</button>
+        </li>`
+    ).join('');
+}
+
 function addNPC(e) {
     e.preventDefault();
     campaignData.npcs.push({
-        name: document.getElementById('npcName').value, 
-        role: document.getElementById('npcRole').value,
-        desc: document.getElementById('npcDescription').value, 
-        allegiance: document.getElementById('npcAllegiance').value,
-        loc: document.getElementById('npcLocation').value
+        name: document.getElementById('npcName').value, role: document.getElementById('npcRole').value,
+        desc: document.getElementById('npcDescription').value, allegiance: document.getElementById('npcAllegiance').value
     });
     e.target.reset(); saveCampaign(); renderNPCsList();
 }
@@ -340,26 +456,19 @@ function addNPC(e) {
 function renderNPCsList() {
     const list = document.getElementById('npcsList');
     if(!list) return;
-    const colors = { aliado: 'var(--success)', enemigo: 'var(--danger)', neutral: '#f1c40f' };
+    const colors = { aliado: 'var(--success)', enemigo: 'var(--danger)', neutral: 'var(--accent)' };
     list.innerHTML = campaignData.npcs.map((n, i) => 
         `<li style="border-left-color: ${colors[n.allegiance]}">
-            <div>
-                <strong>${n.name}</strong> - ${n.role}<br>
-                <small>📍 ${n.loc} | ${n.desc}</small>
-            </div>
+            <div><strong>${escapeHTML(n.name)}</strong> - <small>${escapeHTML(n.role)}</small><br><small>${escapeHTML(n.desc)}</small></div>
             <button onclick="handleDeleteItem('npcs', ${i})">X</button>
         </li>`
     ).join('');
 }
 
-// ========== MUNDO ==========
 function addLocation(e) {
     e.preventDefault();
     campaignData.locations.push({
-        name: document.getElementById('locationName').value, 
-        type: document.getElementById('locationType').value,
-        desc: document.getElementById('locationDescription').value, 
-        conn: document.getElementById('locationConnections').value
+        name: document.getElementById('locationName').value, notes: document.getElementById('locationNotes').value
     });
     e.target.reset(); saveCampaign(); renderLocationsList();
 }
@@ -368,65 +477,17 @@ function renderLocationsList() {
     const list = document.getElementById('locationsList');
     if(!list) return;
     list.innerHTML = campaignData.locations.map((l, i) => 
-        `<li>
-            <div><strong>${l.name}</strong> (${l.type})<br><small>${l.desc} | Conecta: ${l.conn}</small></div>
-            <button onclick="handleDeleteItem('locations', ${i})">X</button>
-        </li>`
+        `<li><div><strong>${escapeHTML(l.name)}</strong><br><small>${escapeHTML(l.notes)}</small></div><button onclick="handleDeleteItem('locations', ${i})">X</button></li>`
     ).join('');
 }
 
-// ========== LOOT ==========
-function addTreasure(e) {
-    e.preventDefault();
-    campaignData.treasure.push({
-        name: document.getElementById('treasureName').value, 
-        type: document.getElementById('treasureType').value,
-        val: document.getElementById('treasureValue').value, 
-        desc: document.getElementById('treasureDescription').value
-    });
-    e.target.reset(); saveCampaign(); renderTreasureList();
-}
-
-function renderTreasureList() {
-    const list = document.getElementById('treasureList');
-    if(!list) return;
-    list.innerHTML = campaignData.treasure.map((t, i) => 
-        `<li>
-            <div><strong>${t.name}</strong> (${t.type})<br><small>${t.val} po | ${t.desc}</small></div>
-            <button onclick="handleDeleteItem('treasure', ${i})">X</button>
-        </li>`
-    ).join('');
-}
-
-function handleGenerateLootPo() {
-    const cr = Number(document.getElementById('lootCR').value) || 1; 
-    const count = Number(document.getElementById('lootCount').value) || 1;
-    // Fórmula de oro aleatoria basada en CR
-    const basePo = (cr * 50) + Math.floor(Math.random() * (cr * 20));
-    const totalGold = basePo * count;
-    
-    const resultEl = document.getElementById('lootResult');
-    if(resultEl) {
-        resultEl.textContent = `💰 ${totalGold.toLocaleString('es-CL')} Piezas de Oro`;
-        resultEl.style.color = "var(--accent)";
-    }
-}
-
-// ========== HISTORIAL SESIONES ==========
 function addSession(e) {
     e.preventDefault();
-    // unshift para añadir al principio (lo más reciente arriba)
     campaignData.sessions.unshift({
-        number: document.getElementById('sessionNumber').value, 
-        date: document.getElementById('sessionDate').value,
-        notes: document.getElementById('sessionNotes').value, 
-        importance: document.getElementById('sessionImportance').value
+        number: document.getElementById('sessionNumber').value, date: document.getElementById('sessionDate').value,
+        notes: document.getElementById('sessionNotes').value, importance: document.getElementById('sessionImportance').value
     });
-    e.target.reset(); 
-    // Reset date input a hoy
-    document.getElementById('sessionDate').value = new Date().toISOString().split('T')[0];
-    saveCampaign(); 
-    renderSessionsHistory();
+    e.target.reset(); saveCampaign(); renderSessionsHistory();
 }
 
 function renderSessionsHistory() {
@@ -435,13 +496,58 @@ function renderSessionsHistory() {
     const colors = { normal: '#444', importante: 'var(--accent)', critica: 'var(--danger)' };
     list.innerHTML = campaignData.sessions.map((s, i) => 
         `<li style="border-left-color: ${colors[s.importance]}">
-            <div style="width:100%">
-                <strong>Sesión ${s.number}</strong> <span style="color:var(--text-secondary); font-size:11px;">- ${s.date}</span><br>
-                <div class="timeline-notes">${s.notes}</div>
-            </div>
+            <div style="width:100%"><strong>Sesión ${escapeHTML(s.number)}</strong> <small>- ${escapeHTML(s.date)}</small><br><div class="timeline-notes">${escapeHTML(s.notes)}</div></div>
             <button onclick="handleDeleteItem('sessions', ${i})">X</button>
         </li>`
     ).join('');
+}
+
+function addTreasure(e) {
+    e.preventDefault();
+    campaignData.treasure.push({
+        name: document.getElementById('treasureName').value, val: document.getElementById('treasureValue').value, desc: document.getElementById('treasureDescription').value
+    });
+    e.target.reset(); saveCampaign(); renderTreasureList();
+}
+
+function renderTreasureList() {
+    const list = document.getElementById('treasureList');
+    if(!list) return;
+    list.innerHTML = campaignData.treasure.map((t, i) => 
+        `<li><div><strong>${escapeHTML(t.name)}</strong><br><small>${escapeHTML(t.val)} po | ${escapeHTML(t.desc)}</small></div><button onclick="handleDeleteItem('treasure', ${i})">X</button></li>`
+    ).join('');
+}
+
+function handleGenerateLootPo(e) {
+    e.preventDefault();
+    const cr = Number(document.getElementById('lootCR').value) || 1; 
+    const count = Number(document.getElementById('lootCount').value) || 1;
+    const totalGold = ((cr * 50) + Math.floor(Math.random() * (cr * 20))) * count;
+    const resultEl = document.getElementById('lootResult');
+    if(resultEl) resultEl.textContent = `💰 ${totalGold} Piezas de Oro`;
+}
+
+// ========== IA MOCKUPS ==========
+function handleMapGeneration(e) {
+    e.preventDefault();
+    const prompt = document.getElementById('mapPrompt').value;
+    const output = document.getElementById('mapOutput');
+    if(!prompt) return alert("Describe el mapa primero.");
+    
+    output.innerHTML = `<span style="color: var(--accent);">🔮 Generando mapa base...</span>`;
+    setTimeout(() => {
+        output.innerHTML = `<div style="text-align:center;"><p style="color:var(--success); font-size:12px;">✅ Mapa generado</p><div style="width:100%; height:150px; background:repeating-linear-gradient(45deg, #2d3436, #2d3436 10px, #1f2937 10px, #1f2937 20px); border: 2px solid var(--accent); border-radius: 8px; display:flex; align-items:center; justify-content:center;"><span style="color: white; text-shadow: 1px 1px 2px black;">${escapeHTML(prompt.substring(0, 20))}...</span></div></div>`;
+    }, 1500);
+}
+
+function handleConsequences(e) {
+    e.preventDefault();
+    if (campaignData.sessions.length === 0) return alert("Necesitas registrar sesiones en el historial primero.");
+    const outputDiv = document.getElementById('consequencesOutput');
+    const textSpan = document.getElementById('consequenceText');
+    outputDiv.style.display = 'block';
+    textSpan.innerHTML = "<span style='color: var(--text-secondary)'>Consultando el Oráculo (Analizando textos)...</span>";
+    setTimeout(() => { textSpan.innerHTML = escapeHTML("Basado en la sesión " + campaignData.sessions[0].number + ": Una facción rival ha notado tus acciones. Prepárate para una emboscada en el próximo viaje."); }, 2000);
 }
 
 // ========== DADOS ==========
@@ -461,114 +567,24 @@ function executeDiceRoll(count, sides, mod) {
     const final = totalNoMod + mod;
     const modStr = mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : '';
     
-    // UI FANCY
     document.querySelector('.result-card-fancy .result-value').textContent = final;
     document.getElementById('diceBreakdown').textContent = `(${rolls.join('+')})${modStr} = ${final}`;
     
-    // Historial
     diceHistory.unshift(`${count}d${sides}${modStr} ➔ <strong>${final}</strong>`);
     if(diceHistory.length > 10) diceHistory.pop();
     
     const historyList = document.getElementById('diceHistory');
-    if(historyList) {
-        historyList.innerHTML = diceHistory.map(h => `<li style="justify-content:center; padding:10px;">${h}</li>`).join('');
-    }
+    if(historyList) historyList.innerHTML = diceHistory.map(h => `<li style="justify-content:center; padding:10px;">${h}</li>`).join('');
 }
 
-// ========== UTILIDAD CENTRALIZADA DE BORRADO ==========
+// ========== BORRADO ==========
 function handleDeleteItem(arrayName, index) {
-    if(confirm('¿Eliminar elemento?')) {
-        
-        // Corrección de lógica para no perder el turno si eliminas a un combatiente previo en la lista
+    if(confirm('¿Eliminar elemento de forma permanente?')) {
         if (arrayName === 'combatants') {
-            if (index < currentTurnIndex) {
-                currentTurnIndex--;
-            } else if (index === currentTurnIndex && currentTurnIndex >= campaignData.combatants.length - 1) {
-                currentTurnIndex = 0; // Vuelve al inicio si era el último
-            }
+            if (index < currentTurnIndex) currentTurnIndex--;
+            else if (index === currentTurnIndex && currentTurnIndex >= campaignData.combatants.length - 1) currentTurnIndex = 0;
         }
-
         campaignData[arrayName].splice(index, 1);
-        saveCampaign(); 
-        renderAll();
+        saveCampaign(); renderAll();
     }
-}
-// ========== SISTEMA DE LOGIN ==========
-function checkLoginState() {
-    const isLoggedIn = localStorage.getItem('qm_logged_in');
-    const loginScreen = document.getElementById('loginScreen');
-    const appScreen = document.getElementById('appScreen');
-    
-    if(isLoggedIn === 'true') {
-        // Mostrar App, Ocultar Login
-        loginScreen.style.display = 'none';
-        appScreen.style.display = 'flex'; // Usamos flex porque el app-container lo requiere
-        
-        // Personalizar mensaje de bienvenida
-        const savedUser = localStorage.getItem('qm_username') || 'Maestro';
-        const welcomeBlock = document.querySelector('.welcome-block h2');
-        if(welcomeBlock) welcomeBlock.textContent = `¡Bienvenido, ${savedUser}!`;
-    } else {
-        // Mostrar Login, Ocultar App
-        loginScreen.style.display = 'flex';
-        appScreen.style.display = 'none';
-    }
-}
-
-// Interceptar el formulario de Login
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Revisar estado al cargar la página
-    checkLoginState();
-    
-    // 2. Evento del formulario de Login
-    const loginForm = document.getElementById('loginForm');
-    if(loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const user = document.getElementById('usernameInput').value;
-    
-            const pass = document.getElementById('passwordInput').value;
-
-            // Guardar sesión en LocalStorage
-            localStorage.setItem('qm_logged_in', 'true');
-            localStorage.setItem('qm_username', user);
-            
-            // Entrar
-            checkLoginState();
-        });
-    }
-
-    // 3. Conectar el botón de Cerrar Sesión del Sidebar
-    const logoutBtn = document.querySelector('.logout-btn');
-    if(logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            if(confirm('¿Seguro que quieres cerrar sesión?')) {
-                localStorage.removeItem('qm_logged_in');
-                checkLoginState();
-            }
-        });
-    }
-});
-
-function renderBestiary() {
-    const list = document.getElementById('monstersList');
-    if(!list || !campaignData.bestiary) return;
-    list.innerHTML = campaignData.bestiary.map((m, i) => 
-        `<li class="bestiary-item">
-            <div class="bestiary-header">
-                <strong>${m.name} <span class="cr-type">(CR ${m.cr} | ${m.type})</span></strong>
-                <div>
-                    <button class="action-btn primary-btn" style="padding:4px 8px; font-size:10px; margin-right:5px; color: black;" onclick="addMonsterToCombat(${i})">⚔️ A Combate</button>
-                    <button onclick="handleDeleteItem('bestiary', ${i})">X</button>
-                </div>
-            </div>
-            <div class="bestiary-stats-row">
-                <span>FUE:${m.str}</span><span>DES:${m.dex}</span><span>CON:${m.con}</span><span>INT:${m.int}</span><span>SAB:${m.wis}</span><span>CAR:${m.cha}</span>
-            </div>
-            <div class="bestiary-combat-info">
-                <span class="hp">HP: ${m.hp}</span> <span>CA: ${m.ac}</span>
-            </div>
-            <div class="bestiary-actions">${m.actions}</div>
-        </li>`
-    ).join('');
 }

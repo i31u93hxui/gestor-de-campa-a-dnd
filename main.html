@@ -18,8 +18,8 @@
             
             <form id="loginForm" class="form-grid">
                 <input type="text" id="usernameInput" placeholder="Nombre de usuario" required style="padding: 15px; text-align: center;">
-                <input type="password" id="passwordInput" placeholder="Contraseña (opcional por ahora)" style="padding: 15px; text-align: center;">
-                <button type="submit" class="action-btn primary-btn btn-full" style="padding: 15px; margin-top: 10px;">Entrar a la Campaña</button>
+                <input type="password" id="passwordInput" placeholder="Contraseña (simulada)" style="padding: 15px; text-align: center;">
+                <button type="submit" class="action-btn btn-dark-red btn-full" style="padding: 15px; margin-top: 10px;">Entrar a la Campaña</button>
             </form>
         </div>
     </div>
@@ -33,17 +33,21 @@
             </div>
             
             <nav class="sidebar-nav">
-                <p class="nav-section-title">Herramientas</p>
+                <p class="nav-section-title">General</p>
                 <button class="nav-btn active" data-tab="dashboard"><span class="icon">🏠</span> Dashboard</button>
                 <button class="nav-btn" data-tab="players"><span class="icon">👥</span> Personajes (PJs)</button>
-                <button class="nav-btn" data-tab="quests"><span class="icon">📜</span> Misiones</button>
-                <button class="nav-btn" data-tab="combat"><span class="icon">⚔️</span> Gestor de Combate</button>
-                <button class="nav-btn" data-tab="npcs"><span class="icon">🎭</span> NPCs</button>
-                <button class="nav-btn" data-tab="world"><span class="icon">🗺️</span> Mundo & Mapas</button>
-                <button class="nav-btn" data-tab="loot"><span class="icon">💎</span> Generador Loot</button>
-                <button class="nav-btn" data-tab="history"><span class="icon">📖</span> Historial Sesiones</button>
+                <button class="nav-btn" data-tab="history"><span class="icon">📖</span> Historial y Oráculo</button>
                 <button class="nav-btn" data-tab="dice"><span class="icon">🎲</span> Lanzador Dados</button>
-                <button class="nav-btn" data-tab="bestiary"><span class="icon">🐉</span> Bestiario</button>
+                
+                <p class="nav-section-title dm-only-element">Herramientas del DM</p>
+                <button class="nav-btn dm-only-element" data-tab="quests"><span class="icon">📜</span> Misiones</button>
+                <button class="nav-btn dm-only-element" data-tab="combat"><span class="icon">⚔️</span> Gestor de Combate</button>
+                <button class="nav-btn dm-only-element" data-tab="bestiary"><span class="icon">🐉</span> Bestiario 5e</button>
+                <button class="nav-btn dm-only-element" data-tab="npcs"><span class="icon">🎭</span> NPCs</button>
+                <button class="nav-btn dm-only-element" data-tab="world"><span class="icon">🗺️</span> Lore & Mapas</button>
+                <button class="nav-btn dm-only-element" data-tab="loot"><span class="icon">💎</span> Generador Loot</button>
+                <button class="nav-btn dm-only-element" data-tab="assets"><span class="icon">🎵</span> Multimedia</button>
+                <button class="nav-btn dm-only-element" data-tab="homebrew"><span class="icon">📚</span> Homebrew</button>
             </nav>
             
             <div class="sidebar-footer">
@@ -56,13 +60,13 @@
             <header class="content-header">
                 <div class="welcome-block">
                     <h2>¡Bienvenido, Maestro!</h2>
-                    <p>Administra tus campañas y personajes desde aquí</p>
+                    <p>Rol: <strong id="roleBadgeDisplay" style="color: var(--accent);">DM</strong></p>
                 </div>
                 <div class="campaign-top-bar">
                     <span class="label">Campaña:</span>
                     <input type="text" id="campaignName" placeholder="Nombre..." class="minimal-input">
                     <div class="divider"></div>
-                    <span class="level-tag">Nivel 1</span>
+                    <span class="level-tag" id="campaignLevelDisplay">Nivel 1</span>
                 </div>
             </header>
 
@@ -72,19 +76,19 @@
                     <section class="quick-cards-grid">
                         <div class="quick-card card-gold" onclick="switchTab('players')">
                             <span class="card-icon">👥</span>
-                            <div class="card-text"><h3>Crear PJ</h3><p>Añade un nuevo aventurero</p></div>
+                            <div class="card-text"><h3>Crear PJ</h3><p>Añade un aventurero</p></div>
                         </div>
-                        <div class="quick-card card-red" onclick="switchTab('combat')">
+                        <div class="quick-card card-red dm-only-element" onclick="switchTab('combat')">
                             <span class="card-icon">⚔️</span>
-                            <div class="card-text"><h3>Iniciar Combate</h3><p>Prepara la iniciativa</p></div>
+                            <div class="card-text"><h3>Combate</h3><p>Prepara iniciativa</p></div>
                         </div>
-                        <div class="quick-card card-blue" onclick="switchTab('quests')">
+                        <div class="quick-card card-blue dm-only-element" onclick="switchTab('quests')">
                             <span class="card-icon">📜</span>
-                            <div class="card-text"><h3>Nueva Misión</h3><p>Define nuevos objetivos</p></div>
+                            <div class="card-text"><h3>Misión</h3><p>Nuevos objetivos</p></div>
                         </div>
                         <div class="quick-card card-purple" onclick="switchTab('dice')">
                             <span class="card-icon">🎲</span>
-                            <div class="card-text"><h3>Tirar Dados</h3><p>Lanzador rápido</p></div>
+                            <div class="card-text"><h3>Dados</h3><p>Lanzador rápido</p></div>
                         </div>
                     </section>
 
@@ -93,7 +97,6 @@
                             <h3 class="panel-title flex-between"><span>📅 Próximas Misiones Críticas</span></h3>
                             <div id="upcomingQuests" class="session-list"></div>
                         </section>
-
                         <section class="panel stats-panel">
                             <h3 class="panel-title">📊 Resumen</h3>
                             <div class="stat-grid-dashboard">
@@ -115,9 +118,8 @@
                                 <input type="text" id="playerName" placeholder="Jugador" required>
                             </div>
                             <div class="form-row-2">
-                                <select id="characterClass"><option value="">Clase</option><option>fighter</option><option>wizard</option><option>rogue</option><option>cleric</option> <option>warlock</option> <option>ranger</option> <option>paladin</option> <option>sorcerer</option> <option>druid</option> <option>barbarian</option> <option>monk</option>
-                                </select>
-                                <select id="playerRace"><option value="">Raza</option><option>human</option><option>Elf</option><option>dwarf</option><option>tielifing</option> <option>gnome</option><option>half-elf</option><option> half-orc </option> <option>halfing</option> <option>dragonborn</option> </select>
+                                <select id="characterClass"><option value="">Clase</option><option>Guerrero</option><option>Mago</option><option>Pícaro</option><option>Clérigo</option></select>
+                                <select id="playerRace"><option value="">Raza</option><option>Humano</option><option>Elfo</option><option>Enano</option></select>
                             </div>
                             <div class="dnd-stats-grid">
                                 <div class="dnd-stat-box"><small>FUE</small><input type="number" id="pjSTR" value="10"></div>
@@ -128,10 +130,10 @@
                                 <div class="dnd-stat-box"><small>CAR</small><input type="number" id="pjCHA" value="10"></div>
                             </div>
                             <div class="row-inputs">
-                                <input type="number" id="playerHP" placeholder="Puntos de Golpe (HP)">
-                                <input type="number" id="playerAC" placeholder="Clase de Armadura (CA)">
+                                <input type="number" id="playerHP" placeholder="HP Máximo">
+                                <input type="number" id="playerAC" placeholder="CA">
                             </div>
-                            <button type="submit" class="action-btn primary-btn btn-full">Guardar Ficha</button>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar Ficha</button>
                         </form>
                         <ul id="playersList" class="items-list-fancy"></ul>
                     </section>
@@ -143,18 +145,10 @@
                         <form id="questForm" class="form-grid">
                             <input type="text" id="questTitle" placeholder="Título de la misión" required>
                             <textarea id="questDescription" placeholder="Descripción y objetivos"></textarea>
-                            <select id="questImportance">
-                                <option value="baja">Secundaria (Baja)</option>
-                                <option value="media">Principal (Media)</option>
-                                <option value="alta">Crítica (Alta)</option>
-                            </select>
-                            <select id="questStatus">
-                                <option value="activa">Activa</option>
-                                <option value="pendiente">Pendiente</option>
-                                <option value="completada">Completada</option>
-                            </select>
+                            <select id="questImportance"><option value="baja">Secundaria</option><option value="media">Principal</option><option value="alta">Crítica</option></select>
+                            <select id="questStatus"><option value="activa">Activa</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option></select>
                             <input type="number" id="questReward" placeholder="Recompensa XP/Oro" min="0">
-                            <button type="submit" class="action-btn primary-btn btn-full">Crear Misión</button>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Crear Misión</button>
                         </form>
                         <h3 class="list-title">Misiones</h3>
                         <ul id="questsList" class="quests-list-fancy"></ul>
@@ -164,6 +158,22 @@
                 <div id="combat" class="tab-content container-centered">
                     <section class="panel">
                         <h2 class="panel-main-title">⚔️ Gestor de Combate</h2>
+                        
+                        <div style="background: rgba(139, 26, 26, 0.1); border: 1px solid var(--danger); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                            <h3 style="color: var(--danger); margin-top: 0; font-size: 16px;">🌋 Entorno y Desventajas</h3>
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <input type="text" id="envName" placeholder="Ej: Pantano Tóxico" style="flex: 1;">
+                                <input type="text" id="envEffect" placeholder="Efecto: Desventaja en tiradas de CON" style="flex: 2;">
+                                <button class="action-btn btn-dark-red" onclick="setEnvironment(event)">Fijar Clima</button>
+                            </div>
+                            <div id="currentEnvironmentDisplay" style="display: none; padding: 15px; background: rgba(0,0,0,0.4); border-radius: 8px; border-left: 4px solid var(--accent); margin-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div><strong id="displayEnvName" style="color: var(--accent); font-size: 15px;"></strong><br><span id="displayEnvEffect" style="color: var(--text-primary); font-size: 13px; margin-top: 5px; display: inline-block;"></span></div>
+                                    <button class="action-btn" style="background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 5px 10px; font-size: 11px;" onclick="clearEnvironment()">Quitar</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <form id="combatForm" class="form-grid">
                             <div class="form-row-2">
                                 <input type="text" id="charName" placeholder="Nombre" required>
@@ -173,12 +183,8 @@
                                 <input type="number" id="charHP" placeholder="HP" required>
                                 <input type="number" id="charAC" placeholder="AC">
                             </div>
-                            <select id="combatantType">
-                                <option value="Jugador">Jugador</option>
-                                <option value="Enemigo">Enemigo</option>
-                                <option value="Aliado">Aliado</option>
-                            </select>
-                            <button type="submit" class="action-btn primary-btn btn-full">Añadir a Combate</button>
+                            <select id="combatantType"><option value="Jugador">Jugador</option><option value="Enemigo">Enemigo</option><option value="Aliado">Aliado</option></select>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Añadir Manual a Combate</button>
                         </form>
 
                         <div class="combat-controls-fancy">
@@ -193,86 +199,107 @@
                     </section>
                 </div>
 
+                <div id="bestiary" class="tab-content container-centered">
+                    <section class="panel">
+                        <h2 class="panel-main-title">🐉 Bestiario D&D 5e</h2>
+                        <div class="combat-controls-fancy" style="margin-bottom: 20px;">
+                            <button class="action-btn" id="loadDefaultMonstersBtn" style="background: var(--border-color); color: white;">Cargar Básicos</button>
+                        </div>
+                        <form id="monsterForm" class="form-grid">
+                            <input type="text" id="monName" placeholder="Nombre del Monstruo" required>
+                            <div class="form-row-2"><input type="text" id="monType" placeholder="Tipo"><input type="text" id="monCR" placeholder="CR"></div>
+                            <div class="dnd-stats-grid">
+                                <div class="dnd-stat-box"><small>FUE</small><input type="number" id="monSTR" value="10"></div>
+                                <div class="dnd-stat-box"><small>DES</small><input type="number" id="monDEX" value="10"></div>
+                                <div class="dnd-stat-box"><small>CON</small><input type="number" id="monCON" value="10"></div>
+                                <div class="dnd-stat-box"><small>INT</small><input type="number" id="monINT" value="10"></div>
+                                <div class="dnd-stat-box"><small>SAB</small><input type="number" id="monWIS" value="10"></div>
+                                <div class="dnd-stat-box"><small>CAR</small><input type="number" id="monCHA" value="10"></div>
+                            </div>
+                            <div class="form-row-2"><input type="number" id="monHP" placeholder="HP"><input type="number" id="monAC" placeholder="CA"></div>
+                            <textarea id="monActions" placeholder="Acciones..."></textarea>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar Monstruo</button>
+                        </form>
+                        <ul id="monstersList" class="items-list-fancy mt-4"></ul>
+                    </section>
+                </div>
+
                 <div id="npcs" class="tab-content container-centered">
                     <section class="panel">
                         <h2 class="panel-main-title">🎭 Gestor de NPCs</h2>
                         <form id="npcForm" class="form-grid">
                             <input type="text" id="npcName" placeholder="Nombre del NPC" required>
                             <input type="text" id="npcRole" placeholder="Rol/Profesión">
-                            <textarea id="npcDescription" placeholder="Descripción (aspecto, personalidad, secretos)"></textarea>
-                            <select id="npcAllegiance">
-                                <option value="neutral">Neutral</option>
-                                <option value="aliado">Aliado</option>
-                                <option value="enemigo">Enemigo</option>
-                            </select>
+                            <textarea id="npcDescription" placeholder="Descripción..."></textarea>
+                            <select id="npcAllegiance"><option value="neutral">Neutral</option><option value="aliado">Aliado</option><option value="enemigo">Enemigo</option></select>
                             <input type="text" id="npcLocation" placeholder="Localización">
-                            <button type="submit" class="action-btn primary-btn btn-full">Guardar NPC</button>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar NPC</button>
                         </form>
-                        <h3 class="list-title">NPCs de la Campaña</h3>
-                        <ul id="npcsList" class="items-list-fancy"></ul>
+                        <ul id="npcsList" class="items-list-fancy mt-4"></ul>
                     </section>
                 </div>
 
                 <div id="world" class="tab-content container-centered">
                     <section class="panel">
-                        <h2 class="panel-main-title">🗺️ Lore y Mapas del Mundo</h2>
+                        <h2 class="panel-main-title">🗺️ Lore y Mapas</h2>
                         <div class="ai-generator-box">
-                            <h3>🔮 Generador de Mapas de Campaña</h3>
-                            <p>Describe la zona. La IA mantendrá la coherencia con tu mundo.</p>
-                            <textarea id="mapPrompt" placeholder="Ej: Un campamento goblin oculto en una cueva detrás de una cascada..."></textarea>
-                            <button id="generateMapBtn" class="action-btn primary-btn btn-full" style="margin-top: 10px;">Generar Mapa Mágico</button>
-                            <div id="mapOutput" class="map-output">
-                                <span style="color: var(--text-secondary);">El mapa generado aparecerá aquí...</span>
-                            </div>
+                            <h3>🔮 Generador de Mapas IA</h3>
+                            <p>Describe la zona. La IA mantendrá la coherencia.</p>
+                            <textarea id="mapPrompt" placeholder="Ej: Ruinas enanas..."></textarea>
+                            <button id="generateMapBtn" class="action-btn btn-dark-red btn-full" style="margin-top: 10px;">Generar Mapa</button>
+                            <div id="mapOutput" class="map-output"><span style="color: var(--text-secondary);">El mapa generado aparecerá aquí...</span></div>
                         </div>
-
                         <form id="locationForm" class="form-grid">
-                            <input type="text" id="locationName" placeholder="Nombre de la locación" required>
-                            <textarea id="locationNotes" placeholder="Inventario del Mundo: Notas del DM, secretos, facciones presentes..."></textarea>
-                            <button type="submit" class="action-btn primary-btn btn-full">Guardar en el Lore</button>
+                            <input type="text" id="locationName" placeholder="Localización" required>
+                            <textarea id="locationNotes" placeholder="Inventario del Mundo..."></textarea>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar Lore</button>
                         </form>
-                        <ul id="locationsList" class="items-list-fancy"></ul>
+                        <ul id="locationsList" class="items-list-fancy mt-4"></ul>
                     </section>
                 </div>
 
                 <div id="loot" class="tab-content container-centered">
                     <section class="panel">
-                        <h2 class="panel-main-title">💎 Generador de Tesoro & Loot</h2>
+                        <h2 class="panel-main-title">💎 Tesoro & Loot</h2>
                         <div class="loot-generator-fancy">
                             <label>CR Enemigo <input type="number" id="lootCR" value="5"></label>
                             <label>Cant. <input type="number" id="lootCount" value="1"></label>
                             <button class="action-btn primary-btn" id="generateLootBtn">Generar po</button>
                         </div>
                         <div id="lootResult" class="loot-result-fancy">💰 ... po</div>
-
-                        <h3 class="list-title">Tesoro de la Campaña</h3>
-                        <form id="treasureForm" class="form-grid">
-                            <input type="text" id="treasureName" placeholder="Nombre del objeto" required>
-                            <input type="text" id="treasureType" placeholder="Tipo (Arma, Poción...)">
+                        <form id="treasureForm" class="form-grid mt-4">
+                            <input type="text" id="treasureName" placeholder="Objeto" required>
+                            <input type="text" id="treasureType" placeholder="Tipo">
                             <input type="number" id="treasureValue" placeholder="Valor po">
                             <textarea id="treasureDescription" placeholder="Descripción"></textarea>
-                            <button type="submit" class="action-btn primary-btn btn-full" style="background:#2ecc71">Añadir Tesoro</button>
+                            <button type="submit" class="action-btn" style="background:#2ecc71; width: 100%;">Añadir Tesoro</button>
                         </form>
-                        <ul id="treasureList" class="items-list-fancy"></ul>
+                        <ul id="treasureList" class="items-list-fancy mt-4"></ul>
                     </section>
                 </div>
 
                 <div id="history" class="tab-content container-centered">
                     <section class="panel">
-                        <h2 class="panel-main-title">📖 Historial de Sesiones</h2>
+                        <h2 class="panel-main-title">📖 Historial y Oráculo</h2>
+                        
+                        <div style="background: rgba(139, 26, 26, 0.1); border: 1px solid #8b1a1a; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                            <h3 style="color: #b91c1c; margin-top:0; font-size: 18px;">🔮 Oráculo de Consecuencias</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary);">Analiza acciones pasadas para predecir eventos futuros.</p>
+                            <button id="generateConsequencesBtn" class="action-btn btn-dark-red btn-full">Analizar Últimas Sesiones</button>
+                            <div id="consequencesOutput" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 13px; display: none;">
+                                <strong style="color: var(--accent);">Posible Consecuencia:</strong>
+                                <p id="consequenceText" style="line-height: 1.5; margin-top: 8px;"></p>
+                            </div>
+                        </div>
+
                         <form id="sessionForm" class="form-grid">
                             <input type="number" id="sessionNumber" placeholder="Sesión #" min="1" value="1">
                             <input type="date" id="sessionDate">
-                            <textarea id="sessionNotes" placeholder="Resumen, eventos, notas..."></textarea>
-                            <select id="sessionImportance">
-                                <option value="normal">Normal</option>
-                                <option value="importante">Importante</option>
-                                <option value="critica">Crítica</option>
-                            </select>
-                            <button type="submit" class="action-btn primary-btn btn-full">Guardar Sesión</button>
+                            <textarea id="sessionNotes" placeholder="Eventos ocurridos..."></textarea>
+                            <select id="sessionImportance"><option value="normal">Normal</option><option value="importante">Importante</option><option value="critica">Crítica</option></select>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar Sesión</button>
                         </form>
-                        <h3 class="list-title">Registro</h3>
-                        <ul id="sessionsList" class="timeline-fancy"></ul>
+                        <ul id="sessionsList" class="timeline-fancy mt-4"></ul>
                     </section>
                 </div>
 
@@ -284,64 +311,57 @@
                                 <input type="number" id="diceCount" min="1" value="1">
                                 <span class="separator">d</span>
                                 <select id="diceSides">
-                                    <option value="4">4</option><option value="6">6</option>
-                                    <option value="8">8</option><option value="10">10</option>
-                                    <option value="12">12</option><option value="20" selected>20</option>
-                                    <option value="100">100</option>
+                                    <option value="4">4</option><option value="6">6</option><option value="8">8</option>
+                                    <option value="10">10</option><option value="12">12</option><option value="20" selected>20</option>
                                 </select>
                                 <span class="separator">+</span>
                                 <input type="number" id="diceModifier" value="0" placeholder="Mod">
                             </div>
                             <button class="action-btn roll-btn" id="rollBtn">TIRAR</button>
                         </div>
-                        
                         <div class="quick-dice-grid">
-                            <button class="q-dice" data-quick="1d4">d4</button>
-                            <button class="q-dice" data-quick="1d6">d6</button>
-                            <button class="q-dice" data-quick="1d8">d8</button>
-                            <button class="q-dice" data-quick="1d10">d10</button>
-                            <button class="q-dice" data-quick="1d12">d12</button>
-                            <button class="q-dice" data-quick="1d20">d20</button>
+                            <button class="q-dice" data-quick="1d4">d4</button><button class="q-dice" data-quick="1d6">d6</button>
+                            <button class="q-dice" data-quick="1d8">d8</button><button class="q-dice" data-quick="1d10">d10</button>
+                            <button class="q-dice" data-quick="1d12">d12</button><button class="q-dice" data-quick="1d20">d20</button>
                         </div>
-
                         <div class="result-card-fancy">
                             <p class="result-label">Resultado Total</p>
                             <span class="result-value">-</span>
                             <p id="diceBreakdown" class="dice-breakdown"></p>
                         </div>
-
-                        <h3 class="list-title">Últimas Tiradas</h3>
                         <ul id="diceHistory" class="items-list-fancy dice-history"></ul>
                     </section>
                 </div>
 
-                <div id="bestiary" class="tab-content container-centered">
+                <div id="assets" class="tab-content container-centered">
                     <section class="panel">
-                        <h2 class="panel-main-title">🐉 Bestiario D&D 5e</h2>
-                        <div class="combat-controls-fancy" style="margin-bottom: 20px;">
-                            <button class="action-btn next-turn-btn" id="loadDefaultMonstersBtn">Cargar Monstruos Básicos</button>
+                        <h2 class="panel-main-title">🎵 Atmósfera y Recursos</h2>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                <h3 style="color: var(--accent); font-size: 16px; margin-top: 0;">Soundboard</h3>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                    <button class="action-btn" style="background: #2d3436; border: 1px solid #444; color: white;">🗡️ Acero</button>
+                                    <button class="action-btn" style="background: #2d3436; border: 1px solid #444; color: white;">🔥 Fuego</button>
+                                </div>
+                            </div>
+                            <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                <h3 style="color: var(--accent); font-size: 16px; margin-top: 0;">Cartas y Docs</h3>
+                                <ul class="items-list-fancy">
+                                    <li><div><strong>Carta Rey</strong><br><small>Sello real</small></div> <button>👁️</button></li>
+                                </ul>
+                            </div>
                         </div>
-                        <form id="monsterForm" class="form-grid">
-                            <input type="text" id="monName" placeholder="Nombre del Monstruo" required>
-                            <div class="form-row-2">
-                                <input type="text" id="monType" placeholder="Tipo (ej. Humanoide, Dragón)">
-                                <input type="text" id="monCR" placeholder="Desafío (CR)">
-                            </div>
-                            <div class="dnd-stats-grid">
-                                <div class="dnd-stat-box"><small>FUE</small><input type="number" id="monSTR" value="10"></div>
-                                <div class="dnd-stat-box"><small>DES</small><input type="number" id="monDEX" value="10"></div>
-                                <div class="dnd-stat-box"><small>CON</small><input type="number" id="monCON" value="10"></div>
-                                <div class="dnd-stat-box"><small>INT</small><input type="number" id="monINT" value="10"></div>
-                                <div class="dnd-stat-box"><small>SAB</small><input type="number" id="monWIS" value="10"></div>
-                                <div class="dnd-stat-box"><small>CAR</small><input type="number" id="monCHA" value="10"></div>
-                            </div>
-                            <div class="form-row-2">
-                                <input type="number" id="monHP" placeholder="HP"><input type="number" id="monAC" placeholder="CA">
-                            </div>
-                            <textarea id="monActions" placeholder="Ataques y Acciones..."></textarea>
-                            <button type="submit" class="action-btn primary-btn btn-full" style="background:#e84118">Guardar Monstruo</button>
+                    </section>
+                </div>
+
+                <div id="homebrew" class="tab-content container-centered">
+                    <section class="panel">
+                        <h2 class="panel-main-title">📚 Homebrew</h2>
+                        <form class="form-grid">
+                            <input type="text" placeholder="Título (Ej: Reglas Alquimia)" required>
+                            <textarea placeholder="Redacta la regla..." style="min-height: 100px;"></textarea>
+                            <button type="submit" class="action-btn btn-dark-red btn-full">Guardar Regla</button>
                         </form>
-                        <ul id="monstersList" class="items-list-fancy mt-4"></ul>
                     </section>
                 </div>
 
